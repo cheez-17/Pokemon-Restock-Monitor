@@ -8,7 +8,7 @@ Dashboard: open dashboard.html in your browser while this script is running
 SETUP:
   py -3.12 -m pip install -r requirements.txt
   py -3.12 -m playwright install chromium
-  py -3.12 pokemon_restock_monitor.py
+  py -3.12 main.py
 
 Then open dashboard.html in your browser — it will show live real data.
 """
@@ -47,290 +47,294 @@ CHECK_INTERVAL_MINS  = int(os.getenv("CHECK_INTERVAL_MINS", "5"))
 MAX_PRICE_THRESHOLD  = float(os.getenv("MAX_PRICE_THRESHOLD", "0"))
 DASHBOARD_PORT       = int(os.getenv("DASHBOARD_PORT", "8765"))
 
-ALERT_COOLDOWN_SECS  = 3600   # don't re-alert same product within 1 hour
+ALERT_COOLDOWN_SECS  = 3600
 
 # ─────────────────────────────────────────────
-# WATCHLIST — edit URLs and prices here
+# WATCHLIST
 # ─────────────────────────────────────────────
 WATCHLIST = [
-  # ════════════════════════════════════════════════════════════════
-# MEGA EVOLUTION — ASCENDED HEROES
-# ════════════════════════════════════════════════════════════════
-# ETB
-{ "store": "Pokemon Center", "name": "Ascended Heroes PC ETB",
-  "url": "https://www.pokemoncenter.com/product/10-10315-101/pokemon-tcg-mega-evolution-ascended-heroes-pokemon-center-elite-trainer-box",
-  "max_price": 63.99 },
-{ "store": "Amazon", "name": "Ascended Heroes ETB",
-  "url": "https://www.amazon.com/dp/B0G3CY83L5", "max_price": 54.99 },
-{ "store": "Walmart", "name": "Ascended Heroes ETB",
-  "url": "https://www.walmart.com/ip/18710966734", "max_price": 49.99 },
-{ "store": "Target", "name": "Ascended Heroes ETB",
-  "url": "https://www.target.com/p/-/A-1010148053", "max_price": 49.99 },
-{ "store": "Best Buy", "name": "Ascended Heroes ETB",
-  "url": "https://www.bestbuy.com/product/JJG2TLXSFV", "max_price": 49.99 },
-{ "store": "GameStop", "name": "Ascended Heroes ETB",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-ascended-heroes-elite-trainer-box/20030564.html",
-  "max_price": 49.99 },
-# Booster Bundle
-{ "store": "Pokemon Center", "name": "Ascended Heroes Booster Bundle",
-  "url": "https://www.pokemoncenter.com/product/10-10311-114/pokemon-tcg-mega-evolution-ascended-heroes-booster-bundle-6-packs",
-  "max_price": 29.99 },
-{ "store": "Amazon", "name": "Ascended Heroes Booster Bundle",
-  "url": "https://www.amazon.com/dp/B0G3CV6Z9D", "max_price": 29.99 },
-{ "store": "Walmart", "name": "Ascended Heroes Booster Bundle",
-  "url": "https://www.walmart.com/ip/18728422476", "max_price": 29.99 },
-{ "store": "Best Buy", "name": "Ascended Heroes Booster Bundle",
-  "url": "https://www.bestbuy.com/product/JJG2TL3JP8", "max_price": 29.99 },
-{ "store": "GameStop", "name": "Ascended Heroes Booster Bundle",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-ascended-heroes-booster-bundle/20030569.html",
-  "max_price": 29.99 },
-# Booster Box
-{ "store": "GameStop", "name": "Ascended Heroes Booster Box (36 packs)",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-ascended-heroes-booster-box/438940.html",
-  "max_price": 149.99 },
+    # ════════════════════════════════════════════════════════════════
+    # MEGA EVOLUTION — ASCENDED HEROES
+    # ════════════════════════════════════════════════════════════════
+    # ETB
+    { "store": "Pokemon Center", "name": "Ascended Heroes PC ETB",
+      "url": "https://www.pokemoncenter.com/product/10-10315-101/pokemon-tcg-mega-evolution-ascended-heroes-pokemon-center-elite-trainer-box",
+      "max_price": 63.99 },
+    { "store": "Amazon", "name": "Ascended Heroes ETB",
+      "url": "https://www.amazon.com/dp/B0G3CY83L5", "max_price": 54.99 },
+    { "store": "Walmart", "name": "Ascended Heroes ETB",
+      "url": "https://www.walmart.com/ip/18710966734", "max_price": 49.99 },
+    { "store": "Target", "name": "Ascended Heroes ETB",
+      "url": "https://www.target.com/p/-/A-1010148053", "max_price": 49.99 },
+    { "store": "Best Buy", "name": "Ascended Heroes ETB",
+      "url": "https://www.bestbuy.com/product/JJG2TLXSFV", "max_price": 49.99 },
+    { "store": "GameStop", "name": "Ascended Heroes ETB",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-ascended-heroes-elite-trainer-box/20030564.html",
+      "max_price": 49.99 },
+    # Booster Bundle
+    { "store": "Pokemon Center", "name": "Ascended Heroes Booster Bundle",
+      "url": "https://www.pokemoncenter.com/product/10-10311-114/pokemon-tcg-mega-evolution-ascended-heroes-booster-bundle-6-packs",
+      "max_price": 29.99 },
+    { "store": "Amazon", "name": "Ascended Heroes Booster Bundle",
+      "url": "https://www.amazon.com/dp/B0G3CV6Z9D", "max_price": 29.99 },
+    { "store": "Walmart", "name": "Ascended Heroes Booster Bundle",
+      "url": "https://www.walmart.com/ip/18728422476", "max_price": 29.99 },
+    { "store": "Best Buy", "name": "Ascended Heroes Booster Bundle",
+      "url": "https://www.bestbuy.com/product/JJG2TL3JP8", "max_price": 29.99 },
+    { "store": "GameStop", "name": "Ascended Heroes Booster Bundle",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-ascended-heroes-booster-bundle/20030569.html",
+      "max_price": 29.99 },
+    # Booster Box
+    { "store": "GameStop", "name": "Ascended Heroes Booster Box (36 packs)",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-ascended-heroes-booster-box/438940.html",
+      "max_price": 149.99 },
 
-# ════════════════════════════════════════════════════════════════
-# MEGA EVOLUTION — PERFECT ORDER
-# ════════════════════════════════════════════════════════════════
-# ETB
-{ "store": "Pokemon Center", "name": "Perfect Order PC ETB",
-  "url": "https://www.pokemoncenter.com/product/10-10372-109/pokemon-tcg-mega-evolution-perfect-order-pokemon-center-elite-trainer-box",
-  "max_price": 63.99 },
-{ "store": "Walmart", "name": "Perfect Order ETB",
-  "url": "https://www.walmart.com/ip/Pokemon-TCG-Mega-Evolution-Perfect-Order-Elite-Trainer-Box/19402160990",
-  "max_price": 49.99 },
-{ "store": "Target", "name": "Perfect Order ETB",
-  "url": "https://www.target.com/p/-/A-95230445", "max_price": 49.99 },
-{ "store": "Best Buy", "name": "Perfect Order ETB",
-  "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-mega-evolution-perfect-order-elite-trainer-box/JJG2TL3W86",
-  "max_price": 49.99 },
-{ "store": "GameStop", "name": "Perfect Order ETB",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-perfect-order-elite-trainer-box/20031957.html",
-  "max_price": 49.99 },
-# Booster Bundle
-{ "store": "Pokemon Center", "name": "Perfect Order Booster Bundle",
-  "url": "https://www.pokemoncenter.com/product/10-10377-109", "max_price": 29.99 },
-{ "store": "GameStop", "name": "Perfect Order Booster Bundle",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-perfect-order-booster-bundle-box/20031960.html",
-  "max_price": 29.99 },
-# Booster Box
-{ "store": "GameStop", "name": "Perfect Order Booster Box (36 packs)",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-perfect-order-booster-box/438940.html",
-  "max_price": 149.99 },
+    # ════════════════════════════════════════════════════════════════
+    # MEGA EVOLUTION — PERFECT ORDER
+    # ════════════════════════════════════════════════════════════════
+    # ETB
+    { "store": "Pokemon Center", "name": "Perfect Order PC ETB",
+      "url": "https://www.pokemoncenter.com/product/10-10372-109/pokemon-tcg-mega-evolution-perfect-order-pokemon-center-elite-trainer-box",
+      "max_price": 63.99 },
+    { "store": "Walmart", "name": "Perfect Order ETB",
+      "url": "https://www.walmart.com/ip/Pokemon-TCG-Mega-Evolution-Perfect-Order-Elite-Trainer-Box/19402160990",
+      "max_price": 49.99 },
+    { "store": "Target", "name": "Perfect Order ETB",
+      "url": "https://www.target.com/p/-/A-95230445", "max_price": 49.99 },
+    { "store": "Best Buy", "name": "Perfect Order ETB",
+      "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-mega-evolution-perfect-order-elite-trainer-box/JJG2TL3W86",
+      "max_price": 49.99 },
+    { "store": "GameStop", "name": "Perfect Order ETB",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-perfect-order-elite-trainer-box/20031957.html",
+      "max_price": 49.99 },
+    # Booster Bundle
+    { "store": "Pokemon Center", "name": "Perfect Order Booster Bundle",
+      "url": "https://www.pokemoncenter.com/product/10-10377-109", "max_price": 29.99 },
+    { "store": "GameStop", "name": "Perfect Order Booster Bundle",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-perfect-order-booster-bundle-box/20031960.html",
+      "max_price": 29.99 },
+    # Booster Box
+    { "store": "GameStop", "name": "Perfect Order Booster Box (36 packs)",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-perfect-order-booster-box/438940.html",
+      "max_price": 149.99 },
 
-# ════════════════════════════════════════════════════════════════
-# SCARLET & VIOLET — DESTINED RIVALS
-# ════════════════════════════════════════════════════════════════
-# ETB
-{ "store": "Pokemon Center", "name": "Destined Rivals ETB",
-  "url": "https://www.pokemoncenter.com/category/destined-rivals", "max_price": 59.99 },
-{ "store": "Walmart", "name": "Destined Rivals ETB",
-  "url": "https://www.walmart.com/ip/15718673510", "max_price": 49.99 },
-{ "store": "Target", "name": "Destined Rivals ETB",
-  "url": "https://www.target.com/p/-/A-94300069", "max_price": 49.99 },
-{ "store": "Best Buy", "name": "Destined Rivals ETB",
-  "url": "https://www.bestbuy.com/site/pokemon-trading-card-game-scarlet-violet-destined-rivals-elite-trainer-box/6624825.p",
-  "max_price": 49.99 },
-{ "store": "GameStop", "name": "Destined Rivals ETB",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-destined-rivals-elite-trainer-box/20021586.html",
-  "max_price": 49.99 },
-# Booster Bundle
-{ "store": "Pokemon Center", "name": "Destined Rivals Booster Bundle",
-  "url": "https://www.pokemoncenter.com/product/100-10638/pokemon-tcg-scarlet-and-violet-destined-rivals-booster-bundle-6-packs",
-  "max_price": 26.99 },
-{ "store": "Walmart", "name": "Destined Rivals Booster Bundle",
-  "url": "https://www.walmart.com/ip/Pokemon-TCG-Scarlet-Violet-Destined-Rivals-Booster-Bundle/16749906607",
-  "max_price": 26.99 },
-{ "store": "Target", "name": "Destined Rivals Booster Bundle",
-  "url": "https://www.target.com/p/-/A-94300067", "max_price": 26.99 },
-{ "store": "Best Buy", "name": "Destined Rivals Booster Bundle",
-  "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-destined-rivals-6pk-booster-bundle/JJG2TL2239",
-  "max_price": 26.99 },
-{ "store": "GameStop", "name": "Destined Rivals Booster Bundle",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-destined-rivals-booster-bundle/20021585.html",
-  "max_price": 26.99 },
-# Booster Box
-{ "store": "Pokemon Center", "name": "Destined Rivals Booster Box (36 packs)",
-  "url": "https://www.pokemoncenter.com/product/10-10157-101/pokemon-tcg-scarlet-and-violet-destined-rivals-booster-display-box-36-packs",
-  "max_price": 161.99 },
-{ "store": "Best Buy", "name": "Destined Rivals Booster Box (36 packs)",
-  "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-destined-rivals-booster-box-36-packs/JJG2TL25CG",
-  "max_price": 149.99 },
-{ "store": "GameStop", "name": "Destined Rivals Booster Box (36 packs)",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-destined-rivals-booster-box/20021587.html",
-  "max_price": 149.99 },
+    # ════════════════════════════════════════════════════════════════
+    # SCARLET & VIOLET — DESTINED RIVALS
+    # ════════════════════════════════════════════════════════════════
+    # ETB
+    { "store": "Pokemon Center", "name": "Destined Rivals ETB",
+      "url": "https://www.pokemoncenter.com/category/destined-rivals", "max_price": 59.99 },
+    { "store": "Walmart", "name": "Destined Rivals ETB",
+      "url": "https://www.walmart.com/ip/15718673510", "max_price": 49.99 },
+    { "store": "Target", "name": "Destined Rivals ETB",
+      "url": "https://www.target.com/p/-/A-94300069", "max_price": 49.99 },
+    { "store": "Best Buy", "name": "Destined Rivals ETB",
+      "url": "https://www.bestbuy.com/site/pokemon-trading-card-game-scarlet-violet-destined-rivals-elite-trainer-box/6624825.p",
+      "max_price": 49.99 },
+    { "store": "GameStop", "name": "Destined Rivals ETB",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-destined-rivals-elite-trainer-box/20021586.html",
+      "max_price": 49.99 },
+    # Booster Bundle
+    { "store": "Pokemon Center", "name": "Destined Rivals Booster Bundle",
+      "url": "https://www.pokemoncenter.com/product/100-10638/pokemon-tcg-scarlet-and-violet-destined-rivals-booster-bundle-6-packs",
+      "max_price": 26.99 },
+    { "store": "Walmart", "name": "Destined Rivals Booster Bundle",
+      "url": "https://www.walmart.com/ip/Pokemon-TCG-Scarlet-Violet-Destined-Rivals-Booster-Bundle/16749906607",
+      "max_price": 26.99 },
+    { "store": "Target", "name": "Destined Rivals Booster Bundle",
+      "url": "https://www.target.com/p/-/A-94300067", "max_price": 26.99 },
+    { "store": "Best Buy", "name": "Destined Rivals Booster Bundle",
+      "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-destined-rivals-6pk-booster-bundle/JJG2TL2239",
+      "max_price": 26.99 },
+    { "store": "GameStop", "name": "Destined Rivals Booster Bundle",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-destined-rivals-booster-bundle/20021585.html",
+      "max_price": 26.99 },
+    # Booster Box
+    { "store": "Pokemon Center", "name": "Destined Rivals Booster Box (36 packs)",
+      "url": "https://www.pokemoncenter.com/product/10-10157-101/pokemon-tcg-scarlet-and-violet-destined-rivals-booster-display-box-36-packs",
+      "max_price": 161.99 },
+    { "store": "Best Buy", "name": "Destined Rivals Booster Box (36 packs)",
+      "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-destined-rivals-booster-box-36-packs/JJG2TL25CG",
+      "max_price": 149.99 },
+    { "store": "GameStop", "name": "Destined Rivals Booster Box (36 packs)",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-destined-rivals-booster-box/20021587.html",
+      "max_price": 149.99 },
 
-# ════════════════════════════════════════════════════════════════
-# SCARLET & VIOLET — JOURNEY TOGETHER
-# ════════════════════════════════════════════════════════════════
-# ETB
-{ "store": "Pokemon Center", "name": "Journey Together PC ETB",
-  "url": "https://www.pokemoncenter.com/category/journey-together", "max_price": 59.99 },
-{ "store": "Walmart", "name": "Journey Together ETB",
-  "url": "https://www.walmart.com/ip/Pokemon-TCG-SV09-Journey-Together-Elite-Trainer-Box-ETB/15749501336",
-  "max_price": 49.99 },
-{ "store": "Target", "name": "Journey Together ETB",
-  "url": "https://www.target.com/p/-/A-93803439", "max_price": 49.99 },
-{ "store": "Best Buy", "name": "Journey Together ETB",
-  "url": "https://www.bestbuy.com/product/JJG2TLCFTX", "max_price": 49.99 },
-{ "store": "GameStop", "name": "Journey Together ETB",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-scarlet-and-violet-journey-together-elite-trainer-box/20019414.html",
-  "max_price": 49.99 },
-# Booster Bundle
-{ "store": "Pokemon Center", "name": "Journey Together Booster Bundle",
-  "url": "https://www.pokemoncenter.com/product/100-10341/pokemon-tcg-scarlet-and-violet-journey-together-booster-bundle-6-packs",
-  "max_price": 26.99 },
-{ "store": "Walmart", "name": "Journey Together Booster Bundle",
-  "url": "https://www.walmart.com/ip/Pokemon-TCG-SV09-Journey-Together-Booster-Bundle-6-Packs/15780068131",
-  "max_price": 26.99 },
-{ "store": "Target", "name": "Journey Together Booster Bundle",
-  "url": "https://www.target.com/p/-/A-94300074", "max_price": 26.99 },
-{ "store": "Best Buy", "name": "Journey Together Booster Bundle",
-  "url": "https://www.bestbuy.com/site/pokemon-trading-card-game-scarlet-violet-journey-together-booster-bundle-6-pk/6614264.p",
-  "max_price": 26.99 },
-{ "store": "GameStop", "name": "Journey Together Booster Bundle",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-scarlet-and-violet-journey-together-booster-bundle/20019415.html",
-  "max_price": 26.99 },
-# Booster Box
-{ "store": "Pokemon Center", "name": "Journey Together Booster Box (36 packs)",
-  "url": "https://www.pokemoncenter.com/product/10-10125-102/pokemon-tcg-scarlet-and-violet-journey-together-enhanced-booster-display-box-36-packs-and-1-promo-card",
-  "max_price": 161.99 },
-{ "store": "Best Buy", "name": "Journey Together Booster Box (36 packs)",
-  "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-journey-together-booster-box-36-packs/JJG2TL2QS8",
-  "max_price": 149.99 },
+    # ════════════════════════════════════════════════════════════════
+    # SCARLET & VIOLET — JOURNEY TOGETHER
+    # ════════════════════════════════════════════════════════════════
+    # ETB
+    { "store": "Pokemon Center", "name": "Journey Together PC ETB",
+      "url": "https://www.pokemoncenter.com/category/journey-together", "max_price": 59.99 },
+    { "store": "Walmart", "name": "Journey Together ETB",
+      "url": "https://www.walmart.com/ip/Pokemon-TCG-SV09-Journey-Together-Elite-Trainer-Box-ETB/15749501336",
+      "max_price": 49.99 },
+    { "store": "Target", "name": "Journey Together ETB",
+      "url": "https://www.target.com/p/-/A-93803439", "max_price": 49.99 },
+    { "store": "Best Buy", "name": "Journey Together ETB",
+      "url": "https://www.bestbuy.com/product/JJG2TLCFTX", "max_price": 49.99 },
+    { "store": "GameStop", "name": "Journey Together ETB",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-scarlet-and-violet-journey-together-elite-trainer-box/20019414.html",
+      "max_price": 49.99 },
+    # Booster Bundle
+    { "store": "Pokemon Center", "name": "Journey Together Booster Bundle",
+      "url": "https://www.pokemoncenter.com/product/100-10341/pokemon-tcg-scarlet-and-violet-journey-together-booster-bundle-6-packs",
+      "max_price": 26.99 },
+    { "store": "Walmart", "name": "Journey Together Booster Bundle",
+      "url": "https://www.walmart.com/ip/Pokemon-TCG-SV09-Journey-Together-Booster-Bundle-6-Packs/15780068131",
+      "max_price": 26.99 },
+    { "store": "Target", "name": "Journey Together Booster Bundle",
+      "url": "https://www.target.com/p/-/A-94300074", "max_price": 26.99 },
+    { "store": "Best Buy", "name": "Journey Together Booster Bundle",
+      "url": "https://www.bestbuy.com/site/pokemon-trading-card-game-scarlet-violet-journey-together-booster-bundle-6-pk/6614264.p",
+      "max_price": 26.99 },
+    { "store": "GameStop", "name": "Journey Together Booster Bundle",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-scarlet-and-violet-journey-together-booster-bundle/20019415.html",
+      "max_price": 26.99 },
+    # Booster Box
+    { "store": "Pokemon Center", "name": "Journey Together Booster Box (36 packs)",
+      "url": "https://www.pokemoncenter.com/product/10-10125-102/pokemon-tcg-scarlet-and-violet-journey-together-enhanced-booster-display-box-36-packs-and-1-promo-card",
+      "max_price": 161.99 },
+    { "store": "Best Buy", "name": "Journey Together Booster Box (36 packs)",
+      "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-journey-together-booster-box-36-packs/JJG2TL2QS8",
+      "max_price": 149.99 },
 
-# ════════════════════════════════════════════════════════════════
-# SCARLET & VIOLET — PRISMATIC EVOLUTIONS
-# ════════════════════════════════════════════════════════════════
-# ETB
-{ "store": "Pokemon Center", "name": "Prismatic Evolutions PC ETB",
-  "url": "https://www.pokemoncenter.com/product/100-10019/pokemon-tcg-scarlet-and-violet-prismatic-evolutions-pokemon-center-elite-trainer-box",
-  "max_price": 63.99 },
-{ "store": "Amazon", "name": "Prismatic Evolutions ETB",
-  "url": "https://www.amazon.com/dp/B0DLPL7LC5", "max_price": 54.99 },
-{ "store": "Walmart", "name": "Prismatic Evolutions ETB",
-  "url": "https://www.walmart.com/ip/15160152062", "max_price": 49.99 },
-{ "store": "Target", "name": "Prismatic Evolutions ETB",
-  "url": "https://www.target.com/p/-/A-93954435", "max_price": 49.99 },
-{ "store": "Best Buy", "name": "Prismatic Evolutions ETB",
-  "url": "https://www.bestbuy.com/product/JJG2TLCW3L", "max_price": 49.99 },
-{ "store": "GameStop", "name": "Prismatic Evolutions ETB",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-prismatic-evolutions-elite-trainer-box/20018505.html",
-  "max_price": 49.99 },
-# Booster Bundle
-{ "store": "Pokemon Center", "name": "Prismatic Evolutions Booster Bundle",
-  "url": "https://www.pokemoncenter.com/product/10-10025-101/pokemon-tcg-scarlet-and-violet-prismatic-evolutions-booster-bundle-6-packs",
-  "max_price": 26.99 },
-{ "store": "Amazon", "name": "Prismatic Evolutions Booster Bundle",
-  "url": "https://www.amazon.com/dp/B0DN98RVZM", "max_price": 29.99 },
-{ "store": "Walmart", "name": "Prismatic Evolutions Booster Bundle",
-  "url": "https://www.walmart.com/ip/POKEMON-SV8-5-PRISMATIC-EVO-BST-BUNDLE/14803962651",
-  "max_price": 26.99 },
-{ "store": "Target", "name": "Prismatic Evolutions Booster Bundle",
-  "url": "https://www.target.com/p/-/A-93954446", "max_price": 26.99 },
-{ "store": "Best Buy", "name": "Prismatic Evolutions Booster Bundle",
-  "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-prismatic-evolutions-booster-bundle/JJG2TL23JK",
-  "max_price": 26.99 },
-{ "store": "GameStop", "name": "Prismatic Evolutions Booster Bundle",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-prismatic-evolutions-booster-bundle/20018824.html",
-  "max_price": 26.99 },
-# Individual Pack
-{ "store": "Amazon", "name": "Prismatic Evolutions Booster Pack (single)",
-  "url": "https://www.amazon.com/dp/B0DWGV8R2N", "max_price": 5.99 },
+    # ════════════════════════════════════════════════════════════════
+    # SCARLET & VIOLET — PRISMATIC EVOLUTIONS
+    # ════════════════════════════════════════════════════════════════
+    # ETB
+    { "store": "Pokemon Center", "name": "Prismatic Evolutions PC ETB",
+      "url": "https://www.pokemoncenter.com/product/100-10019/pokemon-tcg-scarlet-and-violet-prismatic-evolutions-pokemon-center-elite-trainer-box",
+      "max_price": 63.99 },
+    { "store": "Amazon", "name": "Prismatic Evolutions ETB",
+      "url": "https://www.amazon.com/dp/B0DLPL7LC5", "max_price": 54.99 },
+    { "store": "Walmart", "name": "Prismatic Evolutions ETB",
+      "url": "https://www.walmart.com/ip/15160152062", "max_price": 49.99 },
+    { "store": "Target", "name": "Prismatic Evolutions ETB",
+      "url": "https://www.target.com/p/-/A-93954435", "max_price": 49.99 },
+    { "store": "Best Buy", "name": "Prismatic Evolutions ETB",
+      "url": "https://www.bestbuy.com/product/JJG2TLCW3L", "max_price": 49.99 },
+    { "store": "GameStop", "name": "Prismatic Evolutions ETB",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-prismatic-evolutions-elite-trainer-box/20018505.html",
+      "max_price": 49.99 },
+    # Booster Bundle
+    { "store": "Pokemon Center", "name": "Prismatic Evolutions Booster Bundle",
+      "url": "https://www.pokemoncenter.com/product/10-10025-101/pokemon-tcg-scarlet-and-violet-prismatic-evolutions-booster-bundle-6-packs",
+      "max_price": 26.99 },
+    { "store": "Amazon", "name": "Prismatic Evolutions Booster Bundle",
+      "url": "https://www.amazon.com/dp/B0DN98RVZM", "max_price": 29.99 },
+    { "store": "Walmart", "name": "Prismatic Evolutions Booster Bundle",
+      "url": "https://www.walmart.com/ip/POKEMON-SV8-5-PRISMATIC-EVO-BST-BUNDLE/14803962651",
+      "max_price": 26.99 },
+    { "store": "Target", "name": "Prismatic Evolutions Booster Bundle",
+      "url": "https://www.target.com/p/-/A-93954446", "max_price": 26.99 },
+    { "store": "Best Buy", "name": "Prismatic Evolutions Booster Bundle",
+      "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-prismatic-evolutions-booster-bundle/JJG2TL23JK",
+      "max_price": 26.99 },
+    { "store": "GameStop", "name": "Prismatic Evolutions Booster Bundle",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-prismatic-evolutions-booster-bundle/20018824.html",
+      "max_price": 26.99 },
+    # Individual Pack
+    { "store": "Amazon", "name": "Prismatic Evolutions Booster Pack (single)",
+      "url": "https://www.amazon.com/dp/B0DWGV8R2N", "max_price": 5.99 },
 
-# ════════════════════════════════════════════════════════════════
-# SCARLET & VIOLET — SURGING SPARKS
-# ════════════════════════════════════════════════════════════════
-# ETB
-{ "store": "Best Buy", "name": "Surging Sparks ETB",
-  "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-surging-sparks-elite-trainer-box/J3YSYH8G3V",
-  "max_price": 49.99 },
-# Booster Bundle
-{ "store": "Best Buy", "name": "Surging Sparks Booster Bundle",
-  "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-surging-sparks-6-pk-booster-bundle/J3YSYH8G46",
-  "max_price": 26.99 },
-# Individual 3-pack blister
-{ "store": "Best Buy", "name": "Surging Sparks 3-Pack Blister",
-  "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-surging-sparks-3pk-booster-styles-may-vary/J3YSYH8G76",
-  "max_price": 13.99 },
+    # ════════════════════════════════════════════════════════════════
+    # SCARLET & VIOLET — SURGING SPARKS
+    # ════════════════════════════════════════════════════════════════
+    # ETB
+    { "store": "Best Buy", "name": "Surging Sparks ETB",
+      "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-surging-sparks-elite-trainer-box/J3YSYH8G3V",
+      "max_price": 49.99 },
+    # Booster Bundle
+    { "store": "Best Buy", "name": "Surging Sparks Booster Bundle",
+      "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-surging-sparks-6-pk-booster-bundle/J3YSYH8G46",
+      "max_price": 26.99 },
+    # 3-Pack Blister
+    { "store": "Best Buy", "name": "Surging Sparks 3-Pack Blister",
+      "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-surging-sparks-3pk-booster-styles-may-vary/J3YSYH8G76",
+      "max_price": 13.99 },
 
-# ════════════════════════════════════════════════════════════════
-# SCARLET & VIOLET — STELLAR CROWN
-# ════════════════════════════════════════════════════════════════
-# ETB
-{ "store": "GameStop", "name": "Stellar Crown ETB",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-scarlet-and-violet-stellar-crown-elite-trainer-box/20013905.html",
-  "max_price": 49.99 },
-# Booster Bundle
-{ "store": "GameStop", "name": "Stellar Crown Booster Bundle",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-scarlet-and-violet-stellar-crown-booster-bundle/20013922.html",
-  "max_price": 26.99 },
+    # ════════════════════════════════════════════════════════════════
+    # SCARLET & VIOLET — STELLAR CROWN
+    # ════════════════════════════════════════════════════════════════
+    # ETB
+    { "store": "GameStop", "name": "Stellar Crown ETB",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-scarlet-and-violet-stellar-crown-elite-trainer-box/20013905.html",
+      "max_price": 49.99 },
+    # Booster Bundle
+    { "store": "GameStop", "name": "Stellar Crown Booster Bundle",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-scarlet-and-violet-stellar-crown-booster-bundle/20013922.html",
+      "max_price": 26.99 },
 
-# ════════════════════════════════════════════════════════════════
-# SCARLET & VIOLET — TWILIGHT MASQUERADE
-# ════════════════════════════════════════════════════════════════
-# ETB
-{ "store": "Walmart", "name": "Twilight Masquerade ETB",
-  "url": "https://www.walmart.com/ip/Pokemon-Trading-Card-Games-SV6-Twilight-Masquerade-Elite-Trainer-Box/5558569421",
-  "max_price": 49.99 },
-{ "store": "GameStop", "name": "Twilight Masquerade ETB",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-twilight-masquerade-elite-trainer-box/20011215.html",
-  "max_price": 49.99 },
-# Booster Box
-{ "store": "Best Buy", "name": "Twilight Masquerade Booster Box (36 packs)",
-  "url": "https://www.bestbuy.com/site/pokemon-trading-card-game-twilight-masquerade-booster-box-36-packs/6578901.p",
-  "max_price": 149.99 },
-{ "store": "Walmart", "name": "Twilight Masquerade Booster Box (36 packs)",
-  "url": "https://www.walmart.com/ip/Pokemon-TCG-Twilight-Masquerade-Booster-Box-36-Packs/5736034613",
-  "max_price": 149.99 },
-# Individual 3-pack blister
-{ "store": "Best Buy", "name": "Temporal Forces 3-Pack Blister",
-  "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-temporal-forces-3pk-booster-styles-may-vary/J3YSYH8CL9",
-  "max_price": 13.99 },
+    # ════════════════════════════════════════════════════════════════
+    # SCARLET & VIOLET — TWILIGHT MASQUERADE
+    # ════════════════════════════════════════════════════════════════
+    # ETB
+    { "store": "Walmart", "name": "Twilight Masquerade ETB",
+      "url": "https://www.walmart.com/ip/Pokemon-Trading-Card-Games-SV6-Twilight-Masquerade-Elite-Trainer-Box/5558569421",
+      "max_price": 49.99 },
+    { "store": "GameStop", "name": "Twilight Masquerade ETB",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-twilight-masquerade-elite-trainer-box/20011215.html",
+      "max_price": 49.99 },
+    # Booster Box
+    { "store": "Best Buy", "name": "Twilight Masquerade Booster Box (36 packs)",
+      "url": "https://www.bestbuy.com/site/pokemon-trading-card-game-twilight-masquerade-booster-box-36-packs/6578901.p",
+      "max_price": 149.99 },
+    { "store": "Walmart", "name": "Twilight Masquerade Booster Box (36 packs)",
+      "url": "https://www.walmart.com/ip/Pokemon-TCG-Twilight-Masquerade-Booster-Box-36-Packs/5736034613",
+      "max_price": 149.99 },
 
-# ════════════════════════════════════════════════════════════════
-# SCARLET & VIOLET — PALDEAN FATES
-# ════════════════════════════════════════════════════════════════
-# ETB
-{ "store": "Pokemon Center", "name": "Paldean Fates ETB",
-  "url": "https://www.pokemoncenter.com/category/paldean-fates", "max_price": 49.99 },
-{ "store": "Walmart", "name": "Paldean Fates ETB",
-  "url": "https://www.walmart.com/ip/POKEMON-SV4-5-PALDEAN-FATES-ETB/5226743070",
-  "max_price": 49.99 },
-{ "store": "Target", "name": "Paldean Fates ETB",
-  "url": "https://www.target.com/p/-/A-89432659", "max_price": 49.99 },
-{ "store": "Best Buy", "name": "Paldean Fates ETB",
-  "url": "https://www.bestbuy.com/site/pokemon-trading-card-game-scarlet-violet-paldean-fates-elite-trainer-box/6568010.p",
-  "max_price": 49.99 },
-{ "store": "GameStop", "name": "Paldean Fates ETB",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-paldean-fates-booster-bundle/20009334.html",
-  "max_price": 49.99 },
-# Booster Bundle
-{ "store": "Pokemon Center", "name": "Paldean Fates Booster Bundle",
-  "url": "https://www.pokemoncenter.com/product/699-85739/pokemon-tcg-scarlet-and-violet-paldean-fates-booster-bundle",
-  "max_price": 26.99 },
-{ "store": "Walmart", "name": "Paldean Fates Booster Bundle",
-  "url": "https://www.walmart.com/ip/Pokemon-Trading-Card-Games-SV4-5-Paldean-Fates-Booster-Bundle/5226743077",
-  "max_price": 26.99 },
-{ "store": "Target", "name": "Paldean Fates Booster Bundle",
-  "url": "https://www.target.com/p/-/A-89432660", "max_price": 26.99 },
-{ "store": "Best Buy", "name": "Paldean Fates Booster Bundle",
-  "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-paldean-fates-6pk-booster-bundle/J3YSYH8J45",
-  "max_price": 26.99 },
-{ "store": "GameStop", "name": "Paldean Fates Booster Bundle (alt)",
-  "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-paldean-fates-booster-bundle/402363.html",
-  "max_price": 26.99 },
+    # ════════════════════════════════════════════════════════════════
+    # SCARLET & VIOLET — TEMPORAL FORCES
+    # ════════════════════════════════════════════════════════════════
+    # 3-Pack Blister
+    { "store": "Best Buy", "name": "Temporal Forces 3-Pack Blister",
+      "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-temporal-forces-3pk-booster-styles-may-vary/J3YSYH8CL9",
+      "max_price": 13.99 },
 
-# ════════════════════════════════════════════════════════════════
-# SCARLET & VIOLET — PARADOX RIFT
-# ════════════════════════════════════════════════════════════════
-# ETB
-{ "store": "Target", "name": "Paradox Rift ETB",
-  "url": "https://www.target.com/p/-/A-88602567", "max_price": 49.99 },
-# Booster Box
-{ "store": "Walmart", "name": "Paradox Rift Booster Box (36 packs)",
-  "url": "https://www.walmart.com/ip/Pokemon-TCG-Paradox-Rift-Booster-Display-Box-36-Packs/5045168168",
-  "max_price": 149.99 },
+    # ════════════════════════════════════════════════════════════════
+    # SCARLET & VIOLET — PALDEAN FATES
+    # ════════════════════════════════════════════════════════════════
+    # ETB
+    { "store": "Pokemon Center", "name": "Paldean Fates ETB",
+      "url": "https://www.pokemoncenter.com/category/paldean-fates", "max_price": 49.99 },
+    { "store": "Walmart", "name": "Paldean Fates ETB",
+      "url": "https://www.walmart.com/ip/POKEMON-SV4-5-PALDEAN-FATES-ETB/5226743070",
+      "max_price": 49.99 },
+    { "store": "Target", "name": "Paldean Fates ETB",
+      "url": "https://www.target.com/p/-/A-89432659", "max_price": 49.99 },
+    { "store": "Best Buy", "name": "Paldean Fates ETB",
+      "url": "https://www.bestbuy.com/site/pokemon-trading-card-game-scarlet-violet-paldean-fates-elite-trainer-box/6568010.p",
+      "max_price": 49.99 },
+    { "store": "GameStop", "name": "Paldean Fates ETB",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-paldean-fates-booster-bundle/20009334.html",
+      "max_price": 49.99 },
+    # Booster Bundle
+    { "store": "Pokemon Center", "name": "Paldean Fates Booster Bundle",
+      "url": "https://www.pokemoncenter.com/product/699-85739/pokemon-tcg-scarlet-and-violet-paldean-fates-booster-bundle",
+      "max_price": 26.99 },
+    { "store": "Walmart", "name": "Paldean Fates Booster Bundle",
+      "url": "https://www.walmart.com/ip/Pokemon-Trading-Card-Games-SV4-5-Paldean-Fates-Booster-Bundle/5226743077",
+      "max_price": 26.99 },
+    { "store": "Target", "name": "Paldean Fates Booster Bundle",
+      "url": "https://www.target.com/p/-/A-89432660", "max_price": 26.99 },
+    { "store": "Best Buy", "name": "Paldean Fates Booster Bundle",
+      "url": "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-paldean-fates-6pk-booster-bundle/J3YSYH8J45",
+      "max_price": 26.99 },
+    { "store": "GameStop", "name": "Paldean Fates Booster Bundle (alt)",
+      "url": "https://www.gamestop.com/toys-games/trading-cards/products/pokemon-trading-card-game-paldean-fates-booster-bundle/402363.html",
+      "max_price": 26.99 },
+
+    # ════════════════════════════════════════════════════════════════
+    # SCARLET & VIOLET — PARADOX RIFT
+    # ════════════════════════════════════════════════════════════════
+    # ETB
+    { "store": "Target", "name": "Paradox Rift ETB",
+      "url": "https://www.target.com/p/-/A-88602567", "max_price": 49.99 },
+    # Booster Box
+    { "store": "Walmart", "name": "Paradox Rift Booster Box (36 packs)",
+      "url": "https://www.walmart.com/ip/Pokemon-TCG-Paradox-Rift-Booster-Display-Box-36-Packs/5045168168",
+      "max_price": 149.99 },
 ]
 
 # ─────────────────────────────────────────────
@@ -380,7 +384,7 @@ STORE_CONFIGS = {
 }
 
 # ─────────────────────────────────────────────
-# SHARED LIVE STATE — served to dashboard
+# SHARED LIVE STATE
 # ─────────────────────────────────────────────
 state_lock = threading.Lock()
 live_state = {
@@ -428,7 +432,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def log_message(self, format, *args):
-        pass  # silence HTTP server logs
+        pass
 
 
 def start_dashboard_server():
@@ -454,16 +458,16 @@ def check_with_playwright(product: dict, config: dict) -> dict:
     result = {"in_stock": False, "price": None, "error": None}
     with sync_playwright() as p:
         browser = p.chromium.launch(
-    headless=True,
-    args=[
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--no-zygote",
-        "--single-process",
-    ]
-)
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--no-zygote",
+                "--single-process",
+            ]
+        )
         context = browser.new_context(
             user_agent=(
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -514,7 +518,6 @@ def check_with_requests(product: dict, config: dict) -> dict:
     try:
         resp = requests.get(product["url"], headers=headers, timeout=20)
         resp.raise_for_status()
-        from bs4 import BeautifulSoup
         soup = BeautifulSoup(resp.text, "html.parser")
         atc = config.get("add_to_cart_selector")
         if atc and soup.select_one(atc):
@@ -670,7 +673,7 @@ def product_key(product: dict) -> str:
 
 
 # ─────────────────────────────────────────────
-# MAIN CHECK CYCLE — parallel checks, updates live_state
+# MAIN CHECK CYCLE
 # ─────────────────────────────────────────────
 def check_all_products():
     log.info(f"━━━ Starting check cycle ({len(WATCHLIST)} products, parallel) ━━━")
