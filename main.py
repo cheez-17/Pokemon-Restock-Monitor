@@ -791,8 +791,24 @@ def main():
 
 
 if __name__ == "__main__":
-    # ── TEMPORARY TEST — delete these 3 lines after confirming email works ──
-    test_product = {"store": "Test Store", "name": "Test Alert — Email Working!", "url": "https://www.pokemoncenter.com", "max_price": 49.99}
+    # ── TEMPORARY TEST — delete these lines after confirming alerts work ──
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    test_log = logging.getLogger(__name__)
+    test_product = {
+        "store": "Test Store",
+        "name": "Test Alert — Monitor Working!",
+        "url": "https://www.pokemoncenter.com",
+        "max_price": 49.99
+    }
+    test_log.info(f"=== RUNNING ALERT TESTS ===")
+    test_log.info(f"Discord webhook set: {bool(DISCORD_WEBHOOK_URL)}")
+    test_log.info(f"Email from: {EMAIL_FROM}")
+    test_log.info(f"Email to: {EMAIL_TO}")
+    test_log.info(f"Email password set: {bool(EMAIL_PASSWORD)}")
+    test_log.info("Sending Discord test...")
+    send_discord_alert(test_product, 49.99)
+    test_log.info("Sending Email test...")
     send_email_alert(test_product, 49.99)
+    test_log.info("=== ALERT TESTS COMPLETE ===")
     # ── END TEST ──
     main()
