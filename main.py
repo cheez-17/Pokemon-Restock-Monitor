@@ -42,12 +42,10 @@ import sys
 
 def ensure_playwright_browsers():
     try:
-        # Install system dependencies first
         subprocess.run(
             [sys.executable, "-m", "playwright", "install-deps", "chromium"],
             capture_output=True, text=True, timeout=300
         )
-        # Then install the browser binary
         result = subprocess.run(
             [sys.executable, "-m", "playwright", "install", "chromium"],
             capture_output=True, text=True, timeout=300
@@ -670,7 +668,9 @@ def send_email_alert(product: dict, price):
     </body></html>"""
     msg.attach(MIMEText(html_body, "html"))
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.ehlo()
+            server.starttls()
             server.login(EMAIL_FROM, EMAIL_PASSWORD)
             server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
         log.info(f"Email alert sent for {product['name']}")
@@ -789,9 +789,10 @@ def main():
         schedule.run_pending()
         time.sleep(30)
 
-# TEMPORARY TEST — delete these 4 lines after confirming alerts work
-test_product = {"store": "Test Store", "name": "Test Alert — Restock Monitor Working!", "url": "https://www.pokemoncenter.com", "max_price": 49.99}
-send_discord_alert(test_product, 49.99)
-send_email_alert(test_product, 49.99)
+
 if __name__ == "__main__":
+    # ── TEMPORARY TEST — delete these 3 lines after confirming email works ──
+    test_product = {"store": "Test Store", "name": "Test Alert — Email Working!", "url": "https://www.pokemoncenter.com", "max_price": 49.99}
+    send_email_alert(test_product, 49.99)
+    # ── END TEST ──
     main()
