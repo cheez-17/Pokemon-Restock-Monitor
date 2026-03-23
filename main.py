@@ -789,6 +789,9 @@ def main():
         schedule.run_pending()
         time.sleep(30)
 
-
+# TEMPORARY TEST — delete these 4 lines after confirming alerts work
+test_product = {"store": "Test Store", "name": "Test Alert — Restock Monitor Working!", "url": "https://www.pokemoncenter.com", "max_price": 49.99}
+send_discord_alert(test_product, 49.99)
+send_email_alert(test_product, 49.99)
 if __name__ == "__main__":
     main()
