@@ -1,1 +1,1 @@
-worker: python pokemon_restock_monitor.py
+worker: python main.py
