@@ -2,11 +2,11 @@
 nixPkgs = [
   "python312",
   "chromium",
-  "chromium-sandbox",
   "nss",
   "nspr",
   "atk",
   "at-spi2-atk",
+  "at-spi2-core",
   "cups",
   "libdrm",
   "dbus",
@@ -21,18 +21,26 @@ nixPkgs = [
   "xorg.libXfixes",
   "xorg.libXrandr",
   "xorg.libxcb",
+  "xorg.libXcursor",
+  "xorg.libXi",
   "mesa",
   "expat",
   "glib",
   "gtk3",
-  "gdk-pixbuf"
+  "gdk-pixbuf",
+  "fontconfig",
+  "freetype",
+  "harfbuzz",
+  "libuuid",
+  "libgcc",
+  "zlib"
 ]
 
 [phases.install]
 cmds = [
   "pip install -r requirements.txt",
-  "playwright install chromium",
-  "playwright install-deps chromium"
+  "playwright install-deps chromium",
+  "playwright install chromium"
 ]
 
 [start]
