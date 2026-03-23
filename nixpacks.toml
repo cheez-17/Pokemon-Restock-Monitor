@@ -8,4 +8,4 @@ cmds = [
 ]
 
 [start]
-cmd = "python pokemon_restock_monitor.py"
+cmd = "python main.py"
