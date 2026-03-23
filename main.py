@@ -42,6 +42,12 @@ import sys
 
 def ensure_playwright_browsers():
     try:
+        # Install system dependencies first
+        subprocess.run(
+            [sys.executable, "-m", "playwright", "install-deps", "chromium"],
+            capture_output=True, text=True, timeout=300
+        )
+        # Then install the browser binary
         result = subprocess.run(
             [sys.executable, "-m", "playwright", "install", "chromium"],
             capture_output=True, text=True, timeout=300
