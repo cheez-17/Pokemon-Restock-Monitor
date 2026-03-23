@@ -33,6 +33,29 @@ from playwright.sync_api import sync_playwright
 load_dotenv()
 
 # ─────────────────────────────────────────────
+# AUTO-INSTALL PLAYWRIGHT BROWSERS ON STARTUP
+# Runs once when the script starts — ensures
+# Chromium is available even on fresh deploys
+# ─────────────────────────────────────────────
+import subprocess
+import sys
+
+def ensure_playwright_browsers():
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "playwright", "install", "chromium"],
+            capture_output=True, text=True, timeout=300
+        )
+        if result.returncode == 0:
+            print("✓ Playwright Chromium ready")
+        else:
+            print(f"⚠ Playwright install warning: {result.stderr[:200]}")
+    except Exception as e:
+        print(f"⚠ Could not auto-install Playwright browsers: {e}")
+
+ensure_playwright_browsers()
+
+# ─────────────────────────────────────────────
 # CONFIG — set these in your .env file
 # ─────────────────────────────────────────────
 DISCORD_WEBHOOK_URL  = os.getenv("DISCORD_WEBHOOK_URL", "")
@@ -456,52 +479,57 @@ def parse_price(price_text: str):
 
 def check_with_playwright(product: dict, config: dict) -> dict:
     result = {"in_stock": False, "price": None, "error": None}
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-                "--no-zygote",
-                "--single-process",
-            ]
-        )
-        context = browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/122.0.0.0 Safari/537.36"
-            ),
-            viewport={"width": 1280, "height": 800},
-        )
-        page = context.new_page()
-        try:
-            page.goto(product["url"], timeout=30000, wait_until="domcontentloaded")
-            page.wait_for_timeout(2000)
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                    "--no-zygote",
+                    "--single-process",
+                ]
+            )
+            context = browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/122.0.0.0 Safari/537.36"
+                ),
+                viewport={"width": 1280, "height": 800},
+            )
+            page = context.new_page()
+            try:
+                page.goto(product["url"], timeout=30000, wait_until="domcontentloaded")
+                page.wait_for_timeout(2000)
 
-            atc = config.get("add_to_cart_selector")
-            if atc:
-                atc_btn = page.query_selector(atc)
-                if atc_btn and atc_btn.is_visible():
-                    result["in_stock"] = True
+                atc = config.get("add_to_cart_selector")
+                if atc:
+                    atc_btn = page.query_selector(atc)
+                    if atc_btn and atc_btn.is_visible():
+                        result["in_stock"] = True
 
-            for oos_sel in config.get("out_of_stock_selectors", []):
-                oos_el = page.query_selector(oos_sel)
-                if oos_el and oos_el.is_visible():
-                    result["in_stock"] = False
-                    break
+                for oos_sel in config.get("out_of_stock_selectors", []):
+                    oos_el = page.query_selector(oos_sel)
+                    if oos_el and oos_el.is_visible():
+                        result["in_stock"] = False
+                        break
 
-            price_sel = config.get("price_selector")
-            if price_sel:
-                price_el = page.query_selector(price_sel)
-                if price_el:
-                    result["price"] = parse_price(price_el.inner_text())
-        except Exception as e:
-            result["error"] = str(e)
-        finally:
-            browser.close()
+                price_sel = config.get("price_selector")
+                if price_sel:
+                    price_el = page.query_selector(price_sel)
+                    if price_el:
+                        result["price"] = parse_price(price_el.inner_text())
+            except Exception as e:
+                result["error"] = str(e)
+                log.warning(f"    Playwright page error on {product['store']} — {product['name']}: {str(e)[:120]}")
+            finally:
+                browser.close()
+    except Exception as e:
+        result["error"] = f"Browser launch failed: {str(e)}"
+        log.warning(f"    Browser launch error on {product['store']} — {product['name']}: {str(e)[:120]}")
     return result
 
 
